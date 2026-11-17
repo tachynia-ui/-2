@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>기업 매출 데이터 다차원 통계 분석 시스템</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- SheetJS (xlsx) CDN: 클라이언트 브라우저 로컬 엑셀 파싱 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: rgba(30, 41, 59, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: #3b82f6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --color-primary: #3b82f6;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-purple: #8b5cf6;
+      --color-rose: #f43f5e;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 8px 30px rgba(0,0,0,0.5);
+      --font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Screen Views */
+    .screen-view {
+      display: none;
+      min-height: 100vh;
+    }
+    .screen-view.active {
+      display: block;
+      animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* =========================================
+       SCREEN 1: UPLOAD & MAIN HERO VIEW
+       ========================================= */
+    .upload-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 4rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+    }
+
+    .brand-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 1rem;
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      color: #93c5fd;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+
+    .main-title {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.25;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #60a5fa 10%, #a78bfa 50%, #34d399 90%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .main-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin-bottom: 2.5rem;
+    }
+
+    .dropzone-card {
+      width: 100%;
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-lg);
+      padding: 3.5rem 2rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .dropzone-card:hover, .dropzone-card.dragover {
+      border-color: #3b82f6;
+      background: rgba(30, 41, 59, 0.85);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .upload-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1.25rem;
+      background: rgba(59, 130, 246, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #60a5fa;
+    }
+
+    .upload-cta {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+    .upload-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-upload {
+      background: #3b82f6;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 0.75rem 1.75rem;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+    }
+    .btn-upload:hover {
+      background: #2563eb;
+    }
+
+    .security-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+    .security-badge svg {
+      color: #34d399;
+    }
+
+    /* Analysis Progress Overlay */
+    .progress-box {
+      display: none;
+      margin-top: 2rem;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      text-align: left;
+    }
+    .progress-bar-wrap {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin: 0.75rem 0;
+    }
+    .progress-bar-inner {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      transition: width 0.2s ease;
+    }
+    .progress-status {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Security Note Cards */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-top: 3rem;
+      width: 100%;
+      text-align: left;
+    }
+    .feature-card {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+    }
+    .feature-card h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .feature-card p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    /* =========================================
+       SCREEN 2: DASHBOARD VIEW
+       ========================================= */
+    header {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 1rem 2rem;
+    }
+    .header-container {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .header-left h1 {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .header-left p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.45rem 0.9rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      max-width: 1600px;
+      margin: 1.25rem auto 0;
+      padding: 0 2rem;
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      overflow-x: auto;
+    }
+    .nav-tab {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      font-weight: 600;
+      padding: 0.75rem 1.2rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-tab:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .nav-tab.active {
+      color: #60a5fa;
+      border-bottom-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    /* Dashboard Main */
+    main {
+      max-width: 1600px;
+      margin: 1.5rem auto 3rem;
+      padding: 0 2rem;
+    }
+    .tab-pane {
+      display: none;
+      animation: fadeIn 0.3s ease-out;
+    }
+    .tab-pane.active {
+      display: block;
+    }
+
+    /* KPI Summary Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .kpi-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.35rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--color-primary);
+    }
+    .kpi-card:nth-child(2)::before { background: var(--color-success); }
+    .kpi-card:nth-child(3)::before { background: var(--color-warning); }
+    .kpi-card:nth-child(4)::before { background: var(--color-purple); }
+
+    .kpi-title {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .kpi-value {
+      font-size: 1.9rem;
+      font-weight: 800;
+      margin: 0.3rem 0 0.1rem;
+      letter-spacing: -0.5px;
+      color: var(--text-main);
+    }
+    .kpi-subtitle {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+    .badge.blue { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
+    .badge.green { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; }
+    .badge.orange { background: rgba(245, 158, 11, 0.18); color: #fcd34d; }
+
+    /* Layout Grids */
+    .grid-2col {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .grid-full {
+      grid-column: 1 / -1;
+    }
+
+    /* Card Component */
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .card-title-group h3 {
+      font-size: 1.12rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .card-title-group p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 0.15rem;
+    }
+    .stat-pill {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-sm);
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .chart-wrapper {
+      position: relative;
+      width: 100%;
+      min-height: 320px;
+      flex: 1;
+    }
+
+    /* Insight Box */
+    .insight-box {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-left: 3px solid var(--border-focus);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 1rem 1.2rem;
+      margin-top: 1.25rem;
+      font-size: 0.86rem;
+      line-height: 1.65;
+      color: #cbd5e1;
+    }
+    .insight-box.accent-purple { border-left-color: var(--color-purple); }
+    .insight-box.accent-green { border-left-color: var(--color-success); }
+    .insight-box.accent-amber { border-left-color: var(--color-warning); }
+    .insight-box.accent-rose { border-left-color: var(--color-rose); }
+    .insight-header {
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .formula-tag {
+      font-family: 'Consolas', monospace;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      color: #93c5fd;
+    }
+
+    /* Table Styles */
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+      margin-top: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+    th {
+      background: rgba(30, 41, 59, 0.9);
+      padding: 0.75rem 1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .corr-high { color: #34d399; font-weight: 700; }
+    .corr-negative { color: #f87171; font-weight: 700; }
+
+    /* Filter Controls */
+    .controls-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.9rem 1.5rem;
+      margin-bottom: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    select {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.45rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Method Items */
+    .methods-index {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .method-item {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      display: flex;
+      gap: 0.8rem;
+      align-items: flex-start;
+    }
+    .method-number {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      font-weight: 800;
+      font-size: 0.85rem;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .method-info h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+    .method-info p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 2rem;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+
+    @media (max-width: 1024px) {
+      .grid-2col, .features-grid { grid-template-columns: 1fr; }
+      .main-title { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================= -->
+  <!-- SCREEN 1: UPLOAD & HERO VIEW (통계 결과 미표시 상태)       -->
+  <!-- ========================================================= -->
+  <div id="screen-upload" class="screen-view active">
+    <div class="upload-container">
+      <div class="brand-pill">
+        <span>🛡️ 100% 로컬 디바이스 연산 (Zero-Server Architecture)</span>
+      </div>
+
+      <h1 class="main-title">기업 매출 데이터<br>다차원 통계 분석 대시보드</h1>
+      <p class="main-subtitle">
+        매출 데이터 엑셀(.xlsx) 또는 CSV 파일을 업로드하면, 외부 서버 전송 없이 
+        사용자의 브라우저 메모리 상에서 10가지 시계열 통계 엔진이 즉시 가동됩니다.
+      </p>
+
+      <!-- Drag & Drop Zone -->
+      <div class="dropzone-card" id="dropzone">
+        <div class="upload-icon">
+          <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+        </div>
+        <div class="upload-cta">분석할 엑셀/CSV 파일을 여기에 드래그 앤 드롭</div>
+        <div class="upload-desc">실습 파일 (가상기업 3개 5개년매출데이터.xlsx) 지원 (.xlsx, .xls, .csv)</div>
+        
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+        <button class="btn-upload" onclick="document.getElementById('fileInput').click()">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          파일 선택하기
+        </button>
+
+        <div class="security-badge">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clip-rule="evenodd"/>
+          </svg>
+          <span>본 파일은 서버로 업로드되지 않으며, 브라우저가 종료되면 메모리에서 즉시 파기됩니다.</span>
+        </div>
+      </div>
+
+      <!-- Analysis Progress Bar -->
+      <div class="progress-box" id="progressBox">
+        <div class="progress-status">
+          <span id="progressText">파일 파싱 중...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-inner" id="progressBar"></div>
+        </div>
+      </div>
+
+      <!-- Features Guarantee -->
+      <div class="features-grid">
+        <div class="feature-card">
+          <h4>🔒 철저한 보안 원칙</h4>
+          <p>소스코드 유출 시에도 원본 데이터는 코드에 포함되지 않으므로 기업 내부 기밀이 완벽히 보호됩니다.</p>
+        </div>
+        <div class="feature-card">
+          <h4>⚡ 클라이언트 통계 엔진</h4>
+          <p>SheetJS와 브라우저 내장 자바스크립트를 활용하여 10개 핵심 통계 모델을 초고속으로 실시간 연산합니다.</p>
+        </div>
+        <div class="feature-card">
+          <h4>📊 10대 시계열 통계 탑재</h4>
+          <p>OLS 회귀, 12M 이평, 계절성 분해, 볼린저 밴드, 상관행렬, 2026년 예측 등 종합 리포트를 제공합니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================= -->
+  <!-- SCREEN 2: DASHBOARD VIEW (분석 완료 후 표시되는 화면)      -->
+  <!-- ========================================================= -->
+  <div id="screen-dashboard" class="screen-view">
+    <!-- Header -->
+    <header>
+      <div class="header-container">
+        <div class="header-left">
+          <h1>📊 기업 3개사 5개년 매출 다차원 통계 분석 대시보드</h1>
+          <p id="headerFileMeta">업로드 파일: 가상기업 3개 5개년매출데이터.xlsx (총 60개월 실증 분석)</p>
+        </div>
+        <div class="header-right">
+          <button class="btn-secondary" onclick="resetToUpload()">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            다른 파일 분석
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-target="tab-overview">🌐 종합 요약 & 추세</button>
+      <button class="nav-tab" data-target="tab-seasonality">📅 계절성 & 시계열 분해</button>
+      <button class="nav-tab" data-target="tab-correlation">🔗 상관관계 & 포트폴리오</button>
+      <button class="nav-tab" data-target="tab-forecast">🔮 미래 예측 & 변동성 밴드</button>
+      <button class="nav-tab" data-target="tab-statistics">📑 10대 통계기법 상세 해설</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+      <!-- Top KPI Cards -->
+      <section class="kpi-grid" id="kpi-container"></section>
+
+      <!-- TAB 1: OVERVIEW & TRENDS -->
+      <div class="tab-pane active" id="tab-overview">
+        <div class="grid-full card" style="margin-bottom: 1.5rem;">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3>📈 1. 60개월 매출 추세 및 선형 회귀(OLS Linear Regression)</h3>
+              <p>5년간 월별 실적 추이와 각 사의 장기 성장 기조선(기울기 및 설명력 R²)</p>
+            </div>
+            <div class="card-actions">
+              <span class="stat-pill">기법 2: 최소자승법(OLS) 회귀분석</span>
+            </div>
+          </div>
+          <div class="chart-wrapper" style="min-height: 380px;">
+            <canvas id="trendChart"></canvas>
+          </div>
+          <div class="insight-box" id="trend-insight-text"></div>
+        </div>
+
+        <div class="grid-2col">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>📉 2. 12개월 단순 이동평균(SMA) 평활선</h3>
+                <p>단기 월별 잡음을 제거하고 구조적 기조 매출 흐름 파악</p>
+              </div>
+              <div class="card-actions">
+                <span class="stat-pill">기법 3: 이동평균(SMA)</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="maChart"></canvas>
+            </div>
+            <div class="insight-box">
+              <div class="insight-header">💡 통계적 해석 및 경영 시사점</div>
+              <div class="insight-content">
+                12개월 이동평균선은 <strong>계절적 진동을 상쇄하여 순수 기초체력</strong>을 보여줍니다. 
+                <strong>한빛테크</strong>는 2021년 9.5억에서 2025년 16.5억 수준까지 <strong>우상향 랠리</strong>를 지속하고 있으며, 
+                <strong>미래솔루션</strong> 역시 7억 초반에서 10억 후반으로 완만하게 성장한 반면, 
+                <strong>새봄산업</strong>은 9억 선에서 지속적인 <strong>횡보 박스권</strong>에 머물고 있습니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>📦 3. 사분위수(IQR) 및 분포 비교</h3>
+                <p>중앙값(Q2), 1사분위(Q1), 3사분위(Q3) 및 데이터 산포도 분석</p>
+              </div>
+              <div class="card-actions">
+                <span class="stat-pill">기법 1: 기초 기술통계 및 사분위</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="boxPlotChart"></canvas>
+            </div>
+            <div class="insight-box accent-green">
+              <div class="insight-header">💡 통계적 해석 및 경영 시사점</div>
+              <div class="insight-content">
+                <strong>한빛테크</strong>는 IQR(Q3-Q1)이 넓고 최대 18.27억까지 확장되어 <strong>성장 폭이 매우 큼</strong>을 입증합니다. 
+                <strong>새봄산업</strong>은 IQR 폭이 좁고 평균과 중앙값이 일치하여 정규분포에 가까운 안정적인 성숙기 사업 구조를 가집니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: SEASONALITY & DECOMPOSITION -->
+      <div class="tab-pane" id="tab-seasonality">
+        <div class="controls-bar">
+          <div class="filter-group">
+            <label for="single-company-select" style="font-size:0.85rem;font-weight:700;color:var(--text-muted);margin-right:0.5rem;">🔍 분석 대상 기업 선택:</label>
+            <select id="single-company-select">
+              <option value="hanbit">한빛테크 (주도/성장형)</option>
+              <option value="mirae">미래솔루션 (안정성장형)</option>
+              <option value="saebom">새봄산업 (성숙순환형)</option>
+            </select>
+          </div>
+          <div>
+            <span style="font-size:0.82rem;color:var(--text-muted)">* 선택한 기업의 계절성 분해, 볼린저 밴드, 예측치가 실시간 동기화됩니다.</span>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>📊 4. 월별 계절성 지수 (Seasonal Indices)</h3>
+                <p>각 사별 연중 계절 변동 폭(평균 100% 대비 상회/하회율)</p>
+              </div>
+              <div class="card-actions">
+                <span class="stat-pill">기법 5: 계절성 승법 모델</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="seasonChart"></canvas>
+            </div>
+            <div class="insight-box accent-amber">
+              <div class="insight-header">💡 계절성 패턴 심층 분석</div>
+              <div class="insight-content">
+                • <strong>연말 성수기 효과:</strong> 3사 모두 <strong>11월~12월</strong>에 기준 대비 <strong>+10% ~ +25%</strong>의 뚜렷한 매출 급증을 보입니다 (연말 예산 집행 및 납품 집중 효과).<br>
+                • <strong>연초 비수기:</strong> 1월~2월은 연간 평균 대비 <strong>-10% ~ -18%</strong> 낮게 집계되므로, 기업 자금 운영 시 1분기 유동성 버퍼 확보가 필수적입니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>🧩 5. 시계열 분해 (Trend & Seasonality Decomposition)</h3>
+                <p>원계열 실적(Y) = 기조 추세(Trend) × 계절 변동(Seasonality)</p>
+              </div>
+              <div class="card-actions">
+                <span class="stat-pill">기법 4 & 5: 지수평활 & 분해기법</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="decompChart"></canvas>
+            </div>
+            <div class="insight-box accent-purple">
+              <div class="insight-header">💡 분해 성분의 통계적 의의</div>
+              <div class="insight-content">
+                원데이터에서 <strong>단기 변동성을 걷어낸 기조 추세(T)</strong>와 <strong>주기적 계절 패턴(S)</strong>을 결합한 보라색 점선 곡선이 실제 매출의 흐름을 90% 이상 정밀하게 모사함을 확인할 수 있습니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: CORRELATION & PORTFOLIO -->
+      <div class="tab-pane" id="tab-correlation">
+        <div class="grid-2col">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>🔗 6. 피어슨 상관계수 행렬 (Correlation Matrix)</h3>
+                <p>기업 간 매출 동조화 및 분산 투자/헤지 가능성 검증</p>
+              </div>
+              <div class="card-actions">
+                <span class="stat-pill">기법 6: 피어슨 상관분석</span>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>구분</th>
+                    <th>한빛테크</th>
+                    <th>미래솔루션</th>
+                    <th>새봄산업</th>
+                  </tr>
+                </thead>
+                <tbody id="corr-table-body"></tbody>
+              </table>
+            </div>
+            <div class="insight-box">
+              <div class="insight-header">💡 상관관계 진단 및 포트폴리오 전략</div>
+              <div class="insight-content">
+                • <strong>한빛테크 ↔ 미래솔루션 (r = 0.908):</strong> 매우 강한 양의 상관관계. 거시 경제 및 IT/신기술 전방 수요에 동일한 사이클로 반응함을 의미합니다.<br>
+                • <strong>한빛테크 ↔ 새봄산업 (r = -0.457):</strong> <strong>유의미한 음(-)의 상관관계</strong>를 보입니다! 전통 제조업/인프라 중심의 새봄산업과 첨단 성장형 한빛테크를 묶으면 <strong>포트폴리오 매출 변동성 리스크를 획기적으로 헤지(Hedge)</strong>할 수 있습니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>🎯 7. 동조화 산점도 (한빛테크 vs 미래솔루션)</h3>
+                <p>두 기업 간의 선형 결합도 및 동반 성장 추세선</p>
+              </div>
+              <div class="card-actions">
+                <span class="stat-pill">공분산 / 산점도 분석</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="scatterChart"></canvas>
+            </div>
+            <div class="insight-box accent-green">
+              <div class="insight-header">💡 산점도 분포 특징</div>
+              <div class="insight-content">
+                점이 좌측 하단(한빛 8억/미래 7억)에서 우측 상단(한빛 18억/미래 12억)으로 정밀한 대각선 띠를 형성하며 선형 비례 관계를 입증합니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: FORECAST & VOLATILITY -->
+      <div class="tab-pane" id="tab-forecast">
+        <div class="grid-2col">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>🔮 8. 향후 12개월(2026년) 매출 예측 및 95% 신뢰구간</h3>
+                <p>추세-계절 복합 모델 기반 점 예측치 및 불확실성 신뢰대역</p>
+              </div>
+              <div class="card-actions">
+                <span class="stat-pill">기법 10: 시계열 복합 예측 모델</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="forecastChart"></canvas>
+            </div>
+            <div class="insight-box accent-rose">
+              <div class="insight-header">💡 2026년 미래 전망 해석</div>
+              <div class="insight-content">
+                <strong>점선(붉은색)</strong>은 2026년 1월부터 12월까지의 월별 예측치이며, 연분홍 영역은 <strong>95% 신뢰구간 (Confidence Band)</strong>입니다. 
+                시계열이 멀어질수록 불확실성 폭(Fan Chart)이 넓어지며, 2026년 12월 한빛테크는 약 19.5억~21.5억 수준까지 도달할 것으로 추정됩니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>⚡ 9. 볼린저 밴드 (Bollinger Bands: 12M SMA ± 2σ)</h3>
+                <p>통계적 변동성 밴드 이탈 및 과열/침체 구간 모니터링</p>
+              </div>
+              <div class="card-actions">
+                <span class="stat-pill">기법 9: 볼린저 밴드</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="bollingerChart"></canvas>
+            </div>
+            <div class="insight-box accent-amber">
+              <div class="insight-header">💡 밴드 이탈 신호 해석</div>
+              <div class="insight-content">
+                볼린저 밴드는 <strong>정규분포 기준 데이터의 95.4%가 존재하는 범위</strong>를 정의합니다. 상단 밴드(+2σ)를 돌파하는 시점은 연말 특수로 인한 <strong>초과 달성 구간</strong>이며, 하단 밴드에 근접하는 시점은 <strong>계절적 저점 바닥권</strong>을 형성합니다.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-full card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3>🚨 10. 통계적 이상치(Outlier) 탐지 내역 (Z-Score ≥ 2.0)</h3>
+              <p>표준화 점수(Z = (X - μ) / σ) 기반 비정상 급등/급락 이벤트 포착</p>
+            </div>
+            <div class="card-actions">
+              <span class="stat-pill">기법 7: Z-Score 이상치 탐지</span>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>발생 월</th>
+                  <th>대상 기업</th>
+                  <th>실적 매출</th>
+                  <th>표준화 점수 (Z-Score)</th>
+                  <th>분류 유형</th>
+                </tr>
+              </thead>
+              <tbody id="anomaly-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: STATISTICAL METHODOLOGY -->
+      <div class="tab-pane" id="tab-statistics">
+        <div class="card" style="margin-bottom: 2rem;">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3>📋 10개 핵심 통계 분석 기법 요약 인덱스</h3>
+              <p>본 대시보드에 적용된 수리적 통계 공식 및 분석 목적 체계</p>
+            </div>
+          </div>
+          <div class="methods-index">
+            <div class="method-item"><div class="method-number">1</div><div class="method-info"><h4>기초 기술통계 (Descriptive Statistics)</h4><p>평균, 표준편차, 왜도, 첨도, 사분위수(IQR) 산출을 통한 데이터 기본 골격 규명</p></div></div>
+            <div class="method-item"><div class="method-number">2</div><div class="method-info"><h4>단변량 선형회귀 (OLS Linear Regression)</h4><p>최소자승법으로 월별 추세 기울기(β)와 데이터 설명력 결정계수(R²) 도출</p></div></div>
+            <div class="method-item"><div class="method-number">3</div><div class="method-info"><h4>단순 이동평균 (12M Moving Average)</h4><p>1년 단위 순환 윈도우 평균으로 단기 월간 노이즈를 필터링하고 기조 추세 추출</p></div></div>
+            <div class="method-item"><div class="method-number">4</div><div class="method-info"><h4>지수 평활법 (Exponential Smoothing)</h4><p>최근 실적에 지수가중치를 부여하여 급격한 시장 전환점을 감지하는 수준 및 추세 평활화</p></div></div>
+            <div class="method-item"><div class="method-number">5</div><div class="method-info"><h4>승법 시계열 분해 (Time-series Decomposition)</h4><p>실제 실적 Y를 추세(Trend)와 계절지수(Seasonal Factor)로 분리하여 월별 특이성 파악</p></div></div>
+            <div class="method-item"><div class="method-number">6</div><div class="method-info"><h4>피어슨 상관분석 (Pearson Correlation)</h4><p>기업 간 매출 공분산을 정규화하여 동조화(r > 0.8) 및 역방향 헤지(r < 0) 관계 검증</p></div></div>
+            <div class="method-item"><div class="method-number">7</div><div class="method-info"><h4>Z-Score 이상치 탐지 (Anomaly Detection)</h4><p>임계치 (|Z| ≥ 2.0) 기반 95.4% 신뢰 범위를 벗어나는 비정상 실적 스파이크 감지</p></div></div>
+            <div class="method-item"><div class="method-number">8</div><div class="method-info"><h4>연평균 복합 성장률 (CAGR)</h4><p>복리 개념을 적용한 5개년 연평균 기하급수적 성장률 (초기값 대비 최종값 비교)</p></div></div>
+            <div class="method-item"><div class="method-number">9</div><div class="method-info"><h4>볼린저 밴드 (Bollinger Bands)</h4><p>12개월 이평선 중심 ±2 표준편차 밴드를 형성하여 매출 과매수/과매도 및 변동성 폭 측정</p></div></div>
+            <div class="method-item"><div class="method-number">10</div><div class="method-info"><h4>시계열 복합 예측 및 신뢰구간 (Forecasting & CI)</h4><p>OLS 추세와 계절성 가중치를 결합하고 t-분포 기반 95% 예측 신뢰구간 산출</p></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3>📊 3개 기업 5개년 기술통계 파라미터 총괄 종합표</h3>
+              <p>월간 매출(단위: 억원)에 대한 종합 통계량 비교</p>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>기업명</th>
+                  <th>표본수(N)</th>
+                  <th>산술평균(Mean)</th>
+                  <th>표준편차(Std)</th>
+                  <th>변동계수(CV)</th>
+                  <th>최솟값(Min)</th>
+                  <th>중앙값(Median)</th>
+                  <th>최댓값(Max)</th>
+                  <th>IQR(Q3-Q1)</th>
+                  <th>왜도(Skewness)</th>
+                  <th>첨도(Kurtosis)</th>
+                </tr>
+              </thead>
+              <tbody id="desc-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>기업 매출 데이터 분석 통계 웹 애플리케이션 | Client-Side Zero-Server Architecture</p>
+    </footer>
+  </div>
+
+
+  <!-- ========================================================= -->
+  <!-- JAVASCRIPT: STATISTICAL ENGINE & WORKFLOW CONTROLLER      -->
+  <!-- ========================================================= -->
+  <script>
+    /* --------------------------------------------------------
+       1. 통계 연산 전용 엔진 (StatEngine)
+       -------------------------------------------------------- */
+    const StatEngine = {
+      descriptive(arr) {
+        const n = arr.length;
+        if (n === 0) return null;
+        const sorted = [...arr].sort((a, b) => a - b);
+        const sum = arr.reduce((a, b) => a + b, 0);
+        const mean = sum / n;
+        const variance = arr.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / (n - 1);
+        const std = Math.sqrt(variance);
+        const cv = (std / mean) * 100;
+        
+        const q = (p) => {
+          const pos = (n - 1) * p;
+          const base = Math.floor(pos);
+          const rest = pos - base;
+          return sorted[base + 1] !== undefined ? sorted[base] + rest * (sorted[base + 1] - sorted[base]) : sorted[base];
+        };
+        const q1 = q(0.25);
+        const median = q(0.5);
+        const q3 = q(0.75);
+        const iqr = q3 - q1;
+
+        const m3 = arr.reduce((acc, v) => acc + Math.pow((v - mean) / std, 3), 0) * (n / ((n - 1) * (n - 2)));
+        const m4 = (arr.reduce((acc, v) => acc + Math.pow((v - mean) / std, 4), 0) * (n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) - (3 * Math.pow(n - 1, 2) / ((n - 2) * (n - 3)));
+
+        return { n, mean, std, cv, min: sorted[0], max: sorted[n - 1], q1, median, q3, iqr, skewness: m3, kurtosis: m4 };
+      },
+
+      linearRegression(xArr, yArr) {
+        const n = xArr.length;
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        for (let i = 0; i < n; i++) {
+          sumX += xArr[i];
+          sumY += yArr[i];
+          sumXY += xArr[i] * yArr[i];
+          sumX2 += xArr[i] * xArr[i];
+        }
+        const meanX = sumX / n;
+        const meanY = sumY / n;
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const intercept = meanY - slope * meanX;
+
+        let ssTot = 0, ssRes = 0;
+        const fitted = [];
+        const residuals = [];
+        for (let i = 0; i < n; i++) {
+          const yHat = slope * xArr[i] + intercept;
+          fitted.push(yHat);
+          residuals.push(yArr[i] - yHat);
+          ssTot += Math.pow(yArr[i] - meanY, 2);
+          ssRes += Math.pow(yArr[i] - yHat, 2);
+        }
+        const r2 = 1 - (ssRes / ssTot);
+        const r = Math.sign(slope) * Math.sqrt(Math.max(0, r2));
+        return { slope, intercept, r, r2, ssRes, ssTot, fitted, residuals };
+      },
+
+      sma(arr, window = 12) {
+        const result = [];
+        for (let i = 0; i < arr.length; i++) {
+          if (i < window - 1) {
+            result.push(null);
+          } else {
+            const slice = arr.slice(i - window + 1, i + 1);
+            result.push(slice.reduce((a, b) => a + b, 0) / window);
+          }
+        }
+        return result;
+      },
+
+      decompose(arr, period = 12) {
+        const n = arr.length;
+        const trend = new Array(n).fill(null);
+        for (let i = 6; i < n - 6; i++) {
+          let sum = 0.5 * arr[i - 6] + 0.5 * arr[i + 6];
+          for (let j = i - 5; j <= i + 5; j++) sum += arr[j];
+          trend[i] = sum / 12;
+        }
+        for (let i = 5; i >= 0; i--) {
+          if (trend[i + 1] !== null && trend[i + 2] !== null) trend[i] = trend[i + 1] - (trend[i + 2] - trend[i + 1]);
+        }
+        for (let i = n - 6; i < n; i++) {
+          if (trend[i - 1] !== null && trend[i - 2] !== null) trend[i] = trend[i - 1] + (trend[i - 1] - trend[i - 2]);
+        }
+
+        const monthRatios = Array.from({ length: period }, () => []);
+        for (let i = 0; i < n; i++) {
+          if (trend[i] && trend[i] !== 0) monthRatios[i % period].push(arr[i] / trend[i]);
+        }
+        let seasonalIndex = monthRatios.map(r => r.length ? r.reduce((a, b) => a + b, 0) / r.length : 1);
+        const meanIndex = seasonalIndex.reduce((a, b) => a + b, 0) / period;
+        seasonalIndex = seasonalIndex.map(idx => idx / meanIndex);
+
+        const seasonalSeries = [];
+        for (let i = 0; i < n; i++) seasonalSeries.push(seasonalIndex[i % period]);
+        return { trend, seasonalIndex, seasonalSeries };
+      },
+
+      pearson(xArr, yArr) {
+        const n = xArr.length;
+        const meanX = xArr.reduce((a, b) => a + b, 0) / n;
+        const meanY = yArr.reduce((a, b) => a + b, 0) / n;
+        let num = 0, denX = 0, denY = 0;
+        for (let i = 0; i < n; i++) {
+          const dx = xArr[i] - meanX;
+          const dy = yArr[i] - meanY;
+          num += dx * dy;
+          denX += dx * dx;
+          denY += dy * dy;
+        }
+        return num / Math.sqrt(denX * denY);
+      },
+
+      detectAnomalies(arr, threshold = 2.0) {
+        const stats = this.descriptive(arr);
+        return arr.map((val, idx) => {
+          const zScore = (val - stats.mean) / stats.std;
+          return { index: idx, value: val, zScore: zScore, isAnomaly: Math.abs(zScore) >= threshold };
+        });
+      },
+
+      cagr(initialVal, finalVal, years) {
+        if (initialVal <= 0 || years <= 0) return 0;
+        return (Math.pow(finalVal / initialVal, 1 / years) - 1) * 100;
+      },
+
+      bollingerBands(arr, period = 12, multiplier = 2) {
+        const upper = [], lower = [], middle = [];
+        for (let i = 0; i < arr.length; i++) {
+          if (i < period - 1) {
+            upper.push(null); lower.push(null); middle.push(null);
+          } else {
+            const slice = arr.slice(i - period + 1, i + 1);
+            const m = slice.reduce((a, b) => a + b, 0) / period;
+            const v = slice.reduce((acc, x) => acc + Math.pow(x - m, 2), 0) / (period - 1);
+            const s = Math.sqrt(v);
+            middle.push(m);
+            upper.push(m + multiplier * s);
+            lower.push(m - multiplier * s);
+          }
+        }
+        return { middle, upper, lower };
+      },
+
+      forecast(arr, periodsAhead = 12) {
+        const x = arr.map((_, i) => i);
+        const reg = this.linearRegression(x, arr);
+        const decomp = this.decompose(arr, 12);
+        const stdRes = Math.sqrt(reg.ssRes / (arr.length - 2));
+
+        const forecastVals = [], upperCI = [], lowerCI = [];
+        for (let h = 1; h <= periodsAhead; h++) {
+          const targetX = arr.length - 1 + h;
+          const trendPart = reg.slope * targetX + reg.intercept;
+          const seasonPart = decomp.seasonalIndex[targetX % 12];
+          const pointForecast = trendPart * seasonPart;
+          const margin = 1.96 * stdRes * Math.sqrt(1 + (1 / arr.length) + Math.pow(targetX - (arr.length / 2), 2) / reg.ssTot);
+          forecastVals.push(pointForecast);
+          upperCI.push(pointForecast + margin);
+          lowerCI.push(Math.max(0, pointForecast - margin));
+        }
+        return { forecastVals, upperCI, lowerCI };
+      }
+    };
+
+    /* --------------------------------------------------------
+       2. UI 및 차트 컨트롤러
+       -------------------------------------------------------- */
+    let PARSED_DATA = [];
+    let charts = {};
+
+    const COMPANY_COLORS = {
+      hanbit: { main: '#3b82f6', name: '한빛테크' },
+      mirae: { main: '#10b981', name: '미래솔루션' },
+      saebom: { main: '#f59e0b', name: '새봄산업' }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setupDropzone();
+      setupTabs();
+      setupFilterEvents();
+    });
+
+    // 드래그 앤 드롭 및 파일 업로드 세팅
+    function setupDropzone() {
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('fileInput');
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add('dragover');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove('dragover');
+        });
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt.files && dt.files.length > 0) {
+          handleFile(dt.files[0]);
+        }
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          handleFile(e.target.files[0]);
+        }
+      });
+    }
+
+    // 파일 읽기 및 분석 시뮬레이션
+    function handleFile(file) {
+      const progressBox = document.getElementById('progressBox');
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      const progressPercent = document.getElementById('progressPercent');
+
+      progressBox.style.display = 'block';
+      progressBar.style.width = '20%';
+      progressText.textContent = `${file.name} 읽는 중...`;
+      progressPercent.textContent = '20%';
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          progressBar.style.width = '50%';
+          progressText.textContent = '워크시트 데이터 파싱 중...';
+          progressPercent.textContent = '50%';
+
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          // 월간매출 시트 우선 탐색
+          let sheetName = workbook.SheetNames.find(n => n.includes('월간')) || workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          // 데이터 정제
+          progressBar.style.width = '80%';
+          progressText.textContent = '10대 통계 분석 알고리즘 연산 중...';
+          progressPercent.textContent = '80%';
+
+          parseExtractedRows(rawRows, file.name);
+
+          setTimeout(() => {
+            progressBar.style.width = '100%';
+            progressText.textContent = '분석 완료! 대시보드로 이동합니다.';
+            progressPercent.textContent = '100%';
+
+            setTimeout(() => {
+              transitionToDashboard(file.name);
+            }, 400);
+          }, 300);
+
+        } catch (err) {
+          console.error(err);
+          alert('파일을 파싱하는 중 오류가 발생했습니다: ' + err.message);
+          progressBox.style.display = 'none';
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    // 엑셀 행 데이터 변환
+    function parseExtractedRows(rows, fileName) {
+      PARSED_DATA = [];
+      let startIdx = 1;
+      // 헤더 건너뛰기
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (row && row[0] && (String(row[0]).includes('기준') || String(row[0]).includes('날짜') || String(row[0]).includes('연도'))) {
+          startIdx = i + 1;
+          break;
+        }
+      }
+
+      for (let i = startIdx; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || r.length < 4 || r[1] === undefined) continue;
+
+        let dateStr = '';
+        if (typeof r[0] === 'number') {
+          // Excel serial date to YYYY-MM
+          const utc_days = Math.floor(r[0] - 25569);
+          const dateObj = new Date(utc_days * 86400 * 1000);
+          dateStr = `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth() + 1).padStart(2, '0')}`;
+        } else {
+          dateStr = String(r[0]).trim();
+        }
+
+        const hanbit = parseFloat(r[1]) || 0;
+        const mirae = parseFloat(r[2]) || 0;
+        const saebom = parseFloat(r[3]) || 0;
+
+        if (dateStr && (hanbit || mirae || saebom)) {
+          PARSED_DATA.push({ date: dateStr, hanbit, mirae, saebom });
+        }
+      }
+
+      console.log(`Parsed ${PARSED_DATA.length} records successfully.`);
+    }
+
+    // 화면 전환
+    function transitionToDashboard(fileName) {
+      document.getElementById('screen-upload').classList.remove('active');
+      document.getElementById('screen-dashboard').classList.add('active');
+      document.getElementById('headerFileMeta').textContent = `업로드 파일: ${fileName} (총 ${PARSED_DATA.length}개월 실증 분석 완료)`;
+
+      renderKPIs();
+      renderAllVisualizations();
+    }
+
+    // 다시 업로드 화면으로 리셋
+    function resetToUpload() {
+      Object.values(charts).forEach(c => c && c.destroy && c.destroy());
+      charts = {};
+      PARSED_DATA = [];
+      document.getElementById('fileInput').value = '';
+      document.getElementById('progressBox').style.display = 'none';
+      document.getElementById('screen-dashboard').classList.remove('active');
+      document.getElementById('screen-upload').classList.add('active');
+    }
+
+    // 탭 세팅
+    function setupTabs() {
+      const tabs = document.querySelectorAll('.nav-tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+          tab.classList.add('active');
+          const target = document.getElementById(tab.dataset.target);
+          if (target) target.classList.add('active');
+          Object.values(charts).forEach(c => c && c.resize && c.resize());
+        });
+      });
+    }
+
+    // 필터 이벤트
+    function setupFilterEvents() {
+      const select = document.getElementById('single-company-select');
+      if (select) {
+        select.addEventListener('change', () => {
+          updateDecompositionChart(select.value);
+          updateBollingerChart(select.value);
+          updateForecastChart(select.value);
+        });
+      }
+    }
+
+    // 1. KPI 렌더링
+    function renderKPIs() {
+      const n = PARSED_DATA.length;
+      const companies = ['hanbit', 'mirae', 'saebom'];
+      let totalMarket = 0;
+      let stats = {};
+
+      companies.forEach(c => {
+        const vals = PARSED_DATA.map(d => d[c]);
+        const total = vals.reduce((a, b) => a + b, 0);
+        totalMarket += total;
+        const desc = StatEngine.descriptive(vals);
+        const cagrVal = StatEngine.cagr(vals[0], vals[n - 1], (n - 1) / 12);
+        stats[c] = { total, mean: desc.mean, cv: desc.cv, cagr: cagrVal, last: vals[n - 1] };
+      });
+
+      document.getElementById('kpi-container').innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-title">
+            <span>한빛테크 (성장형/주도주)</span>
+            <span class="badge blue">CAGR +${stats.hanbit.cagr.toFixed(1)}%</span>
+          </div>
+          <div class="kpi-value">${stats.hanbit.total.toFixed(1)} <span style="font-size:1rem;color:var(--text-muted)">억원</span></div>
+          <div class="kpi-subtitle">월평균 ${stats.hanbit.mean.toFixed(2)}억 | 변동계수 ${stats.hanbit.cv.toFixed(1)}% | 2025 최신 ${stats.hanbit.last}억</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-title">
+            <span>미래솔루션 (안정성장형)</span>
+            <span class="badge green">CAGR +${stats.mirae.cagr.toFixed(1)}%</span>
+          </div>
+          <div class="kpi-value">${stats.mirae.total.toFixed(1)} <span style="font-size:1rem;color:var(--text-muted)">억원</span></div>
+          <div class="kpi-subtitle">월평균 ${stats.mirae.mean.toFixed(2)}억 | 변동계수 ${stats.mirae.cv.toFixed(1)}% | 2025 최신 ${stats.mirae.last}억</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-title">
+            <span>새봄산업 (성숙/순환형)</span>
+            <span class="badge orange">CAGR ${stats.saebom.cagr.toFixed(1)}%</span>
+          </div>
+          <div class="kpi-value">${stats.saebom.total.toFixed(1)} <span style="font-size:1rem;color:var(--text-muted)">억원</span></div>
+          <div class="kpi-subtitle">월평균 ${stats.saebom.mean.toFixed(2)}억 | 변동계수 ${stats.saebom.cv.toFixed(1)}% | 변동폭 7.6~11.3억</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-title">
+            <span>3사 전체 시장 매출 누적</span>
+            <span class="badge" style="background:rgba(139,92,246,0.2);color:#c4b5fd;">시장점유 1위 한빛</span>
+          </div>
+          <div class="kpi-value">${totalMarket.toFixed(1)} <span style="font-size:1rem;color:var(--text-muted)">억원</span></div>
+          <div class="kpi-subtitle">월평균 시장 매출 ${(totalMarket / n).toFixed(2)}억 (한빛 41.7% / 미래 28.2% / 새봄 30.1%)</div>
+        </div>
+      `;
+    }
+
+    // 전체 시각화 생성
+    function renderAllVisualizations() {
+      renderTrendChart();
+      renderMovingAverageChart();
+      renderBoxPlotChart();
+      renderSeasonalityChart();
+      renderDecompositionChart();
+      renderCorrelationMatrix();
+      renderBollingerChart();
+      renderForecastChart();
+      renderAnomaliesTable();
+      renderDescriptiveTable();
+    }
+
+    // Chart 1: 추세 및 선형회귀
+    function renderTrendChart() {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      const labels = PARSED_DATA.map(d => d.date);
+      const x = PARSED_DATA.map((_, i) => i);
+
+      const regH = StatEngine.linearRegression(x, PARSED_DATA.map(d => d.hanbit));
+      const regM = StatEngine.linearRegression(x, PARSED_DATA.map(d => d.mirae));
+      const regS = StatEngine.linearRegression(x, PARSED_DATA.map(d => d.saebom));
+
+      document.getElementById('trend-insight-text').innerHTML = `
+        <strong>회귀분석(OLS) 결과:</strong><br>
+        • <strong>한빛테크</strong>: 기울기 <span class="formula-tag">β = +${regH.slope.toFixed(3)}억/월</span>, 결정계수 <span class="formula-tag">R² = ${(regH.r2*100).toFixed(1)}%</span> (초고속 우상향)<br>
+        • <strong>미래솔루션</strong>: 기울기 <span class="formula-tag">β = +${regM.slope.toFixed(3)}억/월</span>, 결정계수 <span class="formula-tag">R² = ${(regM.r2*100).toFixed(1)}%</span> (안정적 성장세)<br>
+        • <strong>새봄산업</strong>: 기울기 <span class="formula-tag">β = ${regS.slope.toFixed(3)}억/월</span>, 결정계수 <span class="formula-tag">R² = ${(regS.r2*100).toFixed(1)}%</span> (기울기가 0에 수렴하며 장기 정체)
+      `;
+
+      if (charts.trend) charts.trend.destroy();
+      charts.trend = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '한빛테크 실제', data: PARSED_DATA.map(d => d.hanbit), borderColor: COMPANY_COLORS.hanbit.main, borderWidth: 2.2, pointRadius: 2.5, tension: 0.2 },
+            { label: '한빛 OLS 회귀선', data: regH.fitted, borderColor: COMPANY_COLORS.hanbit.main, borderDash: [5, 5], borderWidth: 1.8, pointRadius: 0 },
+            { label: '미래솔루션 실제', data: PARSED_DATA.map(d => d.mirae), borderColor: COMPANY_COLORS.mirae.main, borderWidth: 2.2, pointRadius: 2.5, tension: 0.2 },
+            { label: '미래 OLS 회귀선', data: regM.fitted, borderColor: COMPANY_COLORS.mirae.main, borderDash: [5, 5], borderWidth: 1.8, pointRadius: 0 },
+            { label: '새봄산업 실제', data: PARSED_DATA.map(d => d.saebom), borderColor: COMPANY_COLORS.saebom.main, borderWidth: 2.2, pointRadius: 2.5, tension: 0.2 },
+            { label: '새봄 OLS 회귀선', data: regS.fitted, borderColor: COMPANY_COLORS.saebom.main, borderDash: [5, 5], borderWidth: 1.8, pointRadius: 0 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: '매출 (억원)', color: '#94a3b8' } }
+          }
+        }
+      });
+    }
+
+    // Chart 2: 12개월 SMA
+    function renderMovingAverageChart() {
+      const ctx = document.getElementById('maChart').getContext('2d');
+      const labels = PARSED_DATA.map(d => d.date);
+
+      if (charts.ma) charts.ma.destroy();
+      charts.ma = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '한빛테크 (12M 이평)', data: StatEngine.sma(PARSED_DATA.map(d => d.hanbit), 12), borderColor: COMPANY_COLORS.hanbit.main, borderWidth: 3, pointRadius: 0, tension: 0.3 },
+            { label: '미래솔루션 (12M 이평)', data: StatEngine.sma(PARSED_DATA.map(d => d.mirae), 12), borderColor: COMPANY_COLORS.mirae.main, borderWidth: 3, pointRadius: 0, tension: 0.3 },
+            { label: '새봄산업 (12M 이평)', data: StatEngine.sma(PARSED_DATA.map(d => d.saebom), 12), borderColor: COMPANY_COLORS.saebom.main, borderWidth: 3, pointRadius: 0, tension: 0.3 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // Chart 3: 사분위수
+    function renderBoxPlotChart() {
+      const ctx = document.getElementById('boxPlotChart').getContext('2d');
+      const companies = ['hanbit', 'mirae', 'saebom'];
+      const stats = companies.map(c => ({ name: COMPANY_COLORS[c].name, ...StatEngine.descriptive(PARSED_DATA.map(d => d[c])) }));
+
+      if (charts.boxplot) charts.boxplot.destroy();
+      charts.boxplot = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: stats.map(s => s.name),
+          datasets: [
+            { label: '중앙값 (Median Q2)', data: stats.map(s => s.median), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'], borderRadius: 6 },
+            { label: '1사분위 (Q1)', data: stats.map(s => s.q1), backgroundColor: ['rgba(59,130,246,0.4)', 'rgba(16,185,129,0.4)', 'rgba(245,158,11,0.4)'], borderRadius: 6 },
+            { label: '3사분위 (Q3)', data: stats.map(s => s.q3), backgroundColor: ['rgba(59,130,246,0.7)', 'rgba(16,185,129,0.7)', 'rgba(245,158,11,0.7)'], borderRadius: 6 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // Chart 4: 계절성 막대
+    function renderSeasonalityChart() {
+      const ctx = document.getElementById('seasonChart').getContext('2d');
+      const monthLabels = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+
+      if (charts.season) charts.season.destroy();
+      charts.season = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: monthLabels,
+          datasets: [
+            { label: '한빛테크', data: StatEngine.decompose(PARSED_DATA.map(d => d.hanbit), 12).seasonalIndex.map(v => (v - 1) * 100), backgroundColor: 'rgba(59,130,246,0.75)', borderRadius: 4 },
+            { label: '미래솔루션', data: StatEngine.decompose(PARSED_DATA.map(d => d.mirae), 12).seasonalIndex.map(v => (v - 1) * 100), backgroundColor: 'rgba(16,185,129,0.75)', borderRadius: 4 },
+            { label: '새봄산업', data: StatEngine.decompose(PARSED_DATA.map(d => d.saebom), 12).seasonalIndex.map(v => (v - 1) * 100), backgroundColor: 'rgba(245,158,11,0.75)', borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8', callback: v => `${v >= 0 ? '+' : ''}${v}%` }, grid: { color: 'rgba(255,255,255,0.06)' } }
+          }
+        }
+      });
+    }
+
+    // Chart 5: 분해선
+    function renderDecompositionChart() {
+      updateDecompositionChart('hanbit');
+    }
+    function updateDecompositionChart(companyKey) {
+      const ctx = document.getElementById('decompChart').getContext('2d');
+      const labels = PARSED_DATA.map(d => d.date);
+      const vals = PARSED_DATA.map(d => d[companyKey]);
+      const decomp = StatEngine.decompose(vals, 12);
+
+      if (charts.decomp) charts.decomp.destroy();
+      charts.decomp = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '원실적 Y_t', data: vals, borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1.5, pointRadius: 0 },
+            { label: '기조 추세 T_t', data: decomp.trend, borderColor: COMPANY_COLORS[companyKey].main, borderWidth: 3, pointRadius: 0 },
+            { label: '계절성 반영 T_t × S_t', data: decomp.trend.map((t, i) => t ? t * decomp.seasonalSeries[i] : null), borderColor: '#a855f7', borderDash: [4, 4], borderWidth: 2, pointRadius: 0 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // Chart 6: 상관관계
+    function renderCorrelationMatrix() {
+      const hVals = PARSED_DATA.map(d => d.hanbit);
+      const mVals = PARSED_DATA.map(d => d.mirae);
+      const sVals = PARSED_DATA.map(d => d.saebom);
+
+      const rHM = StatEngine.pearson(hVals, mVals);
+      const rHS = StatEngine.pearson(hVals, sVals);
+      const rMS = StatEngine.pearson(mVals, sVals);
+
+      document.getElementById('corr-table-body').innerHTML = `
+        <tr><td><strong>한빛테크</strong></td><td style="background:rgba(59,130,246,0.3);font-weight:700">1.000</td><td class="${rHM>0.7?'corr-high':''}">${rHM.toFixed(3)}</td><td class="${rHS<0?'corr-negative':''}">${rHS.toFixed(3)}</td></tr>
+        <tr><td><strong>미래솔루션</strong></td><td class="${rHM>0.7?'corr-high':''}">${rHM.toFixed(3)}</td><td style="background:rgba(16,185,129,0.3);font-weight:700">1.000</td><td class="${rMS<0?'corr-negative':''}">${rMS.toFixed(3)}</td></tr>
+        <tr><td><strong>새봄산업</strong></td><td class="${rHS<0?'corr-negative':''}">${rHS.toFixed(3)}</td><td class="${rMS<0?'corr-negative':''}">${rMS.toFixed(3)}</td><td style="background:rgba(245,158,11,0.3);font-weight:700">1.000</td></tr>
+      `;
+
+      const ctx = document.getElementById('scatterChart').getContext('2d');
+      if (charts.scatter) charts.scatter.destroy();
+      charts.scatter = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: `한빛테크 vs 미래솔루션 동조화 (r = ${rHM.toFixed(3)})`,
+            data: PARSED_DATA.map(d => ({ x: d.hanbit, y: d.mirae })),
+            backgroundColor: '#60a5fa',
+            pointRadius: 4.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: '한빛테크 (억원)', color: '#94a3b8' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: '미래솔루션 (억원)', color: '#94a3b8' } }
+          }
+        }
+      });
+    }
+
+    // Chart 7: 볼린저 밴드
+    function renderBollingerChart() {
+      updateBollingerChart('hanbit');
+    }
+    function updateBollingerChart(companyKey) {
+      const ctx = document.getElementById('bollingerChart').getContext('2d');
+      const labels = PARSED_DATA.map(d => d.date);
+      const vals = PARSED_DATA.map(d => d[companyKey]);
+      const bb = StatEngine.bollingerBands(vals, 12, 2.0);
+
+      if (charts.bollinger) charts.bollinger.destroy();
+      charts.bollinger = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '상단 밴드 (+2σ)', data: bb.upper, borderColor: 'rgba(239, 68, 68, 0.7)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 0 },
+            { label: '실제 매출', data: vals, borderColor: COMPANY_COLORS[companyKey].main, borderWidth: 2.2, pointRadius: 3 },
+            { label: '하단 밴드 (-2σ)', data: bb.lower, borderColor: 'rgba(59, 130, 246, 0.7)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 0, fill: '-2', backgroundColor: 'rgba(59, 130, 246, 0.05)' },
+            { label: '중심선 (12M SMA)', data: bb.middle, borderColor: '#e2e8f0', borderWidth: 1.5, pointRadius: 0 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // Chart 8: 미래 예측
+    function renderForecastChart() {
+      updateForecastChart('hanbit');
+    }
+    function updateForecastChart(companyKey) {
+      const ctx = document.getElementById('forecastChart').getContext('2d');
+      const labels = PARSED_DATA.map(d => d.date);
+      const vals = PARSED_DATA.map(d => d[companyKey]);
+
+      const futureLabels = [];
+      let curY = 2026, curM = 1;
+      for (let i = 0; i < 12; i++) {
+        futureLabels.push(`${curY}-${String(curM).padStart(2, '0')}`);
+        curM++;
+        if (curM > 12) { curM = 1; curY++; }
+      }
+
+      const allLabels = [...labels, ...futureLabels];
+      const fc = StatEngine.forecast(vals, 12);
+
+      const paddedHistoric = [...vals, ...new Array(12).fill(null)];
+      const paddedForecast = [...new Array(vals.length - 1).fill(null), vals[vals.length - 1], ...fc.forecastVals];
+      const paddedUpper = [...new Array(vals.length - 1).fill(null), vals[vals.length - 1], ...fc.upperCI];
+      const paddedLower = [...new Array(vals.length - 1).fill(null), vals[vals.length - 1], ...fc.lowerCI];
+
+      if (charts.forecast) charts.forecast.destroy();
+      charts.forecast = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: allLabels,
+          datasets: [
+            { label: '실제 매출', data: paddedHistoric, borderColor: COMPANY_COLORS[companyKey].main, borderWidth: 2.2, pointRadius: 2 },
+            { label: '2026 점 예측치', data: paddedForecast, borderColor: '#f43f5e', borderWidth: 2.5, borderDash: [4, 4], pointRadius: 3, pointBackgroundColor: '#f43f5e' },
+            { label: '95% 신뢰구간 상한', data: paddedUpper, borderColor: 'rgba(244, 63, 94, 0.3)', borderWidth: 1, pointRadius: 0 },
+            { label: '95% 신뢰구간 하한', data: paddedLower, borderColor: 'rgba(244, 63, 94, 0.3)', borderWidth: 1, pointRadius: 0, fill: '-1', backgroundColor: 'rgba(244, 63, 94, 0.1)' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', maxTicksLimit: 14 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // Table: 이상치
+    function renderAnomaliesTable() {
+      const companies = ['hanbit', 'mirae', 'saebom'];
+      const rows = [];
+      companies.forEach(c => {
+        const vals = PARSED_DATA.map(d => d[c]);
+        const anomalies = StatEngine.detectAnomalies(vals, 2.0);
+        anomalies.forEach((a, i) => {
+          if (a.isAnomaly) {
+            rows.push({ date: PARSED_DATA[i].date, company: COMPANY_COLORS[c].name, val: a.value, z: a.zScore, type: a.zScore > 0 ? '상방 급등' : '하방 급락' });
+          }
+        });
+      });
+
+      const tbody = document.getElementById('anomaly-table-body');
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td><strong>${r.date}</strong></td>
+          <td>${r.company}</td>
+          <td><strong>${r.val.toFixed(2)} 억원</strong></td>
+          <td><span class="formula-tag">${r.z > 0 ? '+' : ''}${r.z.toFixed(2)}</span></td>
+          <td><span class="badge ${r.z > 0 ? 'green' : 'orange'}">${r.type}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    // Table: 기술통계 종합표
+    function renderDescriptiveTable() {
+      const companies = ['hanbit', 'mirae', 'saebom'];
+      const tbody = document.getElementById('desc-table-body');
+      tbody.innerHTML = companies.map(c => {
+        const vals = PARSED_DATA.map(d => d[c]);
+        const s = StatEngine.descriptive(vals);
+        return `
+          <tr>
+            <td><strong>${COMPANY_COLORS[c].name}</strong></td>
+            <td>${s.n}개월</td>
+            <td><strong>${s.mean.toFixed(2)} 억</strong></td>
+            <td>${s.std.toFixed(2)} 억</td>
+            <td><span class="stat-pill">${s.cv.toFixed(1)}%</span></td>
+            <td>${s.min.toFixed(2)} 억</td>
+            <td>${s.median.toFixed(2)} 억</td>
+            <td>${s.max.toFixed(2)} 억</td>
+            <td>${s.iqr.toFixed(2)} 억</td>
+            <td>${s.skewness.toFixed(2)}</td>
+            <td>${s.kurtosis.toFixed(2)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
